@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const requiredFiles = ["index.html", "styles.css", "game.js", "README.md", "manifest.json"];
-const requiredAssets = ["attic-room.png", "lantern-orchard.png", "paper-tide.png", "character-cards.png"];
+const requiredAssets = ["attic-room.png", "lantern-orchard.png", "paper-tide.png", "character-cards.png", "nilo-sprite.png"];
 
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
@@ -28,9 +28,10 @@ const js = readFileSync(join(root, "game.js"), "utf8");
 for (const token of ["title-screen", "play-screen", "dialogue-modal", "battle-modal", "journal-panel", "ending-card"]) {
   if (!html.includes(`id="${token}"`)) fail(`index.html missing ${token}`);
 }
-for (const asset of requiredAssets) {
+for (const asset of requiredAssets.filter((asset) => asset !== "nilo-sprite.png")) {
   if (!css.includes(`assets/${asset}`)) fail(`styles.css does not reference assets/${asset}`);
 }
+if (!css.includes("assets/nilo-sprite.png")) fail("styles.css does not reference assets/nilo-sprite.png");
 for (const token of ["startNewGame", "continueGame", "startBattle", "showEnding", "localStorage", "AudioContext"]) {
   if (!js.includes(token)) fail(`game.js missing ${token}`);
 }

@@ -199,6 +199,11 @@
   let masterGain = null;
   let musicTimer = null;
   let musicStep = 0;
+  const WALK_SPEED = 13;
+  const movementKeys = new Set();
+  let movementFrame = null;
+  let lastMovementTime = 0;
+  let lastStepTime = 0;
 
   function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -357,6 +362,7 @@
   }
 
   function approachHotspot(hotspot) {
+    clearMovement();
     state.player.x = hotspot.x;
     state.player.y = clamp(hotspot.y + 8, 8, 88);
     updatePlayer();
@@ -696,6 +702,7 @@
 
   function runDialogue(entries, done = null) {
     if (!entries || !entries.length) { if (done) done(); return; }
+    clearMovement();
     dialogueQueue = entries.slice();
     dialogueIndex = 0;
     dialogueDone = done;
@@ -770,6 +777,7 @@
   function startBattle(enemyId, onVictory) {
     const template = enemies[enemyId];
     if (!template) return;
+    clearMovement();
     battle = {
       id: enemyId,
       enemy: template,
@@ -913,6 +921,7 @@
   }
 
   function showEnding() {
+    clearMovement();
     state.ending = state.truth >= 5 && state.warmth >= 3 ? "bright" : state.truth >= 3 ? "gentle" : "unfinished";
     const ending = endings[state.ending];
     refs.endingTitle.textContent = ending.title;
@@ -967,6 +976,7 @@
   }
 
   function goToTitle() {
+    clearMovement();
     refs.ending.hidden = true;
     refs.journal.hidden = true;
     refs.dialogue.hidden = true;
@@ -977,6 +987,7 @@
   }
 
   function openJournal() {
+    clearMovement();
     refs.journal.hidden = false;
     renderJournal();
   }
@@ -1083,11 +1094,45 @@
     saveState();
   }
 
-  function movePlayer(dx, dy) {
-    if (dialogueOpen() || battle || !refs.journal.hidden || state.ending) return;
-    state.player.x = clamp(state.player.x + dx, 4, 96);
-    state.player.y = clamp(state.player.y + dy, 8, 88);
+  function movementVector() {
+    const horizontal = Number(movementKeys.has("d") || movementKeys.has("arrowright")) - Number(movementKeys.has("a") || movementKeys.has("arrowleft"));
+    const vertical = Number(movementKeys.has("s") || movementKeys.has("arrowdown")) - Number(movementKeys.has("w") || movementKeys.has("arrowup"));
+    const length = Math.hypot(horizontal, vertical);
+    return length ? { x: horizontal / length, y: vertical / length } : { x: 0, y: 0 };
+  }
+
+  function clearMovement() {
+    movementKeys.clear();
+    lastMovementTime = 0;
+    if (movementFrame !== null) {
+      cancelAnimationFrame(movementFrame);
+      movementFrame = null;
+    }
+  }
+
+  function requestMovementFrame() {
+    if (movementFrame !== null) return;
+    lastMovementTime = performance.now();
+    movementFrame = requestAnimationFrame(stepMovement);
+  }
+
+  function stepMovement(now) {
+    movementFrame = null;
+    if (!movementKeys.size || dialogueOpen() || battle || !refs.journal.hidden || state.ending) {
+      lastMovementTime = 0;
+      return;
+    }
+    const elapsed = clamp((now - lastMovementTime) / 1000, 0, .05);
+    lastMovementTime = now;
+    const direction = movementVector();
+    state.player.x = clamp(state.player.x + direction.x * WALK_SPEED * elapsed, 4, 96);
+    state.player.y = clamp(state.player.y + direction.y * WALK_SPEED * elapsed, 8, 88);
     updatePlayer();
+    if (now - lastStepTime > 320) {
+      playSfx("step");
+      lastStepTime = now;
+    }
+    movementFrame = requestAnimationFrame(stepMovement);
   }
 
   function inspectNearest() {
@@ -1116,10 +1161,18 @@
       return;
     }
     if (!refs.journal.hidden) return;
-    const move = { w: [0, -4], arrowup: [0, -4], s: [0, 4], arrowdown: [0, 4], a: [-4, 0], arrowleft: [-4, 0], d: [4, 0], arrowright: [4, 0] }[key];
-    if (move) { event.preventDefault(); movePlayer(move[0], move[1]); return; }
+    if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
+      event.preventDefault();
+      movementKeys.add(key);
+      requestMovementFrame();
+      return;
+    }
     if (key === "e") { event.preventDefault(); inspectNearest(); return; }
     if (key === "j") { event.preventDefault(); openJournal(); }
+  }
+
+  function handleKeyup(event) {
+    movementKeys.delete(event.key.toLowerCase());
   }
 
   function handleClick(event) {
@@ -1144,8 +1197,10 @@
 
   refs.dialogueNext.addEventListener("click", advanceDialogue);
   document.addEventListener("keydown", handleKeydown);
+  document.addEventListener("keyup", handleKeyup);
   document.addEventListener("click", handleClick);
   document.addEventListener("pointerdown", () => initAudio(), { once: true });
+  window.addEventListener("blur", clearMovement);
   window.addEventListener("beforeunload", () => saveState());
 
   state.sound = true;

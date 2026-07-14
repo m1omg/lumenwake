@@ -338,19 +338,14 @@ button:focus-visible {
 
 .player {
   z-index: 4;
-  width: 42px;
-  height: 62px;
+  width: 96px;
+  height: 142px;
   pointer-events: none;
-  transform: translate(-50%, -70%);
-  transition: left .2s ease, top .2s ease;
+  transform: translate(-50%, -78%);
+  background: url("assets/nilo-sprite.png") center / contain no-repeat;
+  filter: drop-shadow(0 8px 7px rgba(6,9,22,.34));
+  transition: none;
 }
-
-.player-shadow { position: absolute; left: 50%; bottom: 1px; width: 42px; height: 13px; border-radius: 50%; background: rgba(6,9,22,.45); transform: translateX(-50%); filter: blur(2px); }
-.player-body { position: absolute; left: 50%; bottom: 8px; width: 26px; height: 31px; border: 2px solid #1d2130; border-radius: 44% 44% 35% 35%; background: #a66551; transform: translateX(-50%); }
-.player-hood { position: absolute; left: 50%; top: 2px; width: 36px; height: 36px; border: 2px solid #1d2130; border-radius: 50% 50% 43% 43%; background: #315c65; transform: translateX(-50%); box-shadow: inset -6px 2px 0 rgba(0,0,0,.12); }
-.player-hood::after { content: ""; position: absolute; left: 50%; top: 13px; width: 17px; height: 12px; border-radius: 45%; background: #d69c77; transform: translateX(-50%); }
-.player-lantern { position: absolute; right: -2px; bottom: 16px; width: 13px; height: 17px; border: 2px solid #3f2b2f; border-radius: 45%; background: var(--gold); box-shadow: 0 0 14px 4px rgba(255,226,145,.5); }
-.player-glow { position: absolute; right: -10px; bottom: 10px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,226,145,.18); filter: blur(6px); }
 
 .nearest-hint {
   z-index: 5;
@@ -527,6 +522,7 @@ kbd { display: inline-block; min-width: 1.3em; margin-right: .18rem; padding: .1
   .chapter-block h2 { font-size: 1rem; }
   .play-area { min-height: 58vh; padding: .45rem; }
   .scene-frame { border-radius: 9px; }
+  .player { width: 70px; height: 104px; }
   .scene-caption { bottom: .5rem; font-size: .72rem; }
   .game-footer { align-items: flex-start; min-height: 82px; padding: .65rem .9rem; }
   .control-legend { display: none; }
