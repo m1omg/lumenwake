@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#182442" />
+    <meta name="description" content="Lumenwake — an original hand-drawn micro-JRPG about memory, grief, and the lights we leave for each other." />
+    <title>Lumenwake — a small memory-fable</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="paper-specks" aria-hidden="true"></div>
+    <main id="app" class="app">
+      <section id="title-screen" class="screen title-screen" aria-label="Title screen">
+        <div class="title-art" aria-hidden="true"></div>
+        <div class="title-wash" aria-hidden="true"></div>
+        <div class="title-content">
+          <p class="eyebrow">a hand-drawn memory-fable</p>
+          <h1>Lumenwake</h1>
+          <p class="title-subtitle">Some lights are only visible<br />after you stop looking away.</p>
+          <div class="title-actions">
+            <button class="primary-button large" data-action="new-game">Begin a new walk</button>
+            <button class="ghost-button large" data-action="continue-game" id="continue-button">Continue the last walk</button>
+          </div>
+          <p class="title-note">A short original browser JRPG · keyboard or mouse · sound begins after your first click</p>
+        </div>
+        <div class="title-footer">
+          <span>© 2026 Lumenwake</span>
+          <span>Made of paper, weather, and a little courage.</span>
+        </div>
+      </section>
+
+      <section id="play-screen" class="screen play-screen" aria-label="Game screen" hidden>
+        <header class="game-header">
+          <div class="chapter-block">
+            <p id="chapter-kicker" class="eyebrow">chapter I</p>
+            <h2 id="chapter-title">The Room That Waits</h2>
+          </div>
+          <div class="header-stats" aria-label="Player status">
+            <div class="mini-stat courage-stat" title="Courage">
+              <span class="stat-symbol">✦</span>
+              <span id="courage-value">16</span>
+              <span class="stat-label">courage</span>
+            </div>
+            <div class="mini-stat warmth-stat" title="Warmth">
+              <span class="stat-symbol">☼</span>
+              <span id="warmth-value">0</span>
+              <span class="stat-label">warmth</span>
+            </div>
+            <div class="mini-stat spark-stat" title="Memory sparks">
+              <span class="stat-symbol">✧</span>
+              <span id="spark-value">0</span>
+              <span class="stat-label">sparks</span>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" data-action="journal" title="Open journal" aria-label="Open journal">☰</button>
+            <button class="icon-button" data-action="sound" id="sound-button" title="Toggle sound" aria-label="Toggle sound">♫</button>
+          </div>
+        </header>
+
+        <div class="play-area">
+          <div id="scene-frame" class="scene-frame scene-attic">
+            <div id="scene-art" class="scene-art" aria-label="Current illustrated location"></div>
+            <div class="scene-grain" aria-hidden="true"></div>
+            <div class="scene-vignette" aria-hidden="true"></div>
+            <div id="hotspots" class="hotspots" aria-label="Things to inspect"></div>
+            <div id="player" class="player" aria-label="Nilo">
+              <div class="player-shadow"></div>
+              <div class="player-body"></div>
+              <div class="player-hood"></div>
+              <div class="player-lantern"></div>
+              <div class="player-glow"></div>
+            </div>
+            <div id="nearest-hint" class="nearest-hint" hidden></div>
+            <div id="scene-caption" class="scene-caption"></div>
+          </div>
+        </div>
+
+        <footer class="game-footer">
+          <div class="goal-block">
+            <p class="eyebrow">current thread</p>
+            <p id="goal-text">Look around the attic.</p>
+          </div>
+          <div class="control-legend" aria-label="Controls">
+            <span><kbd>WASD</kbd> move</span>
+            <span><kbd>E</kbd> inspect</span>
+            <span><kbd>J</kbd> journal</span>
+          </div>
+          <button class="small-button" data-action="journal">Journal</button>
+        </footer>
+      </section>
+
+      <aside id="dialogue-modal" class="dialogue-modal modal" hidden aria-live="polite">
+        <div class="dialogue-inner">
+          <div id="dialogue-portrait" class="dialogue-portrait" aria-hidden="true"></div>
+          <div class="dialogue-copy">
+            <div class="dialogue-meta">
+              <span id="dialogue-speaker" class="dialogue-speaker">Nilo</span>
+              <span id="dialogue-count" class="dialogue-count"></span>
+            </div>
+            <p id="dialogue-text" class="dialogue-text"></p>
+            <div id="dialogue-choices" class="dialogue-choices"></div>
+            <button id="dialogue-next" class="dialogue-next" aria-label="Continue dialogue">continue <span>↵</span></button>
+          </div>
+        </div>
+      </aside>
+
+      <aside id="battle-modal" class="battle-modal modal" hidden aria-live="polite">
+        <div class="battle-panel">
+          <div class="battle-topline">
+            <div>
+              <p class="eyebrow" id="battle-kicker">a small encounter</p>
+              <h2 id="battle-title">The Paper Gnawer</h2>
+            </div>
+            <button class="icon-button battle-close" data-action="battle-close" title="Leave battle" aria-label="Leave battle">×</button>
+          </div>
+          <div class="battle-arena">
+            <div class="battle-weather" aria-hidden="true"></div>
+            <div id="enemy-art" class="enemy-art paper-gnawer" aria-label="Enemy illustration"></div>
+            <div class="enemy-card">
+              <div class="enemy-name-row">
+                <span id="enemy-mood" class="mood-chip">jittery</span>
+                <span id="enemy-hp-text">12 / 12</span>
+              </div>
+              <div class="hp-track"><span id="enemy-hp-bar" class="hp-bar"></span></div>
+              <p id="battle-narration" class="battle-narration">It is waiting to see what you do.</p>
+            </div>
+          </div>
+          <div id="battle-log" class="battle-log" role="log"></div>
+          <div class="battle-command-area">
+            <div class="battle-command-heading">
+              <p class="eyebrow">choose a feeling</p>
+              <span id="battle-turn-label" class="turn-label">your turn</span>
+            </div>
+            <div id="battle-commands" class="battle-commands">
+              <button class="battle-command" data-battle-action="listen"><span class="command-icon">◌</span><span><b>Listen</b><small>lower its guard</small></span><kbd>1</kbd></button>
+              <button class="battle-command" data-battle-action="shine"><span class="command-icon">✦</span><span><b>Shine</b><small>deal focused harm</small></span><kbd>2</kbd></button>
+              <button class="battle-command" data-battle-action="mend"><span class="command-icon">⌁</span><span><b>Mend</b><small>restore courage</small></span><kbd>3</kbd></button>
+              <button class="battle-command" data-battle-action="name"><span class="command-icon">〰</span><span><b>Name it</b><small>make the feeling smaller</small></span><kbd>4</kbd></button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <aside id="journal-panel" class="journal-panel" hidden aria-label="Journal">
+        <div class="journal-sheet">
+          <div class="journal-header">
+            <div>
+              <p class="eyebrow">Nilo's pocket journal</p>
+              <h2>Things that stayed</h2>
+            </div>
+            <button class="icon-button" data-action="journal-close" aria-label="Close journal">×</button>
+          </div>
+          <div class="journal-tabs" role="tablist">
+            <button class="journal-tab active" data-journal-tab="notes">notes</button>
+            <button class="journal-tab" data-journal-tab="people">people</button>
+            <button class="journal-tab" data-journal-tab="controls">how to walk</button>
+          </div>
+          <div id="journal-content" class="journal-content"></div>
+          <div class="journal-bottom"><button class="small-button" data-action="save-now">Save now</button><span id="save-status">autosaves after every important moment</span></div>
+        </div>
+      </aside>
+
+      <div id="ending-card" class="ending-card" hidden>
+        <div class="ending-art" aria-hidden="true"></div>
+        <div class="ending-copy">
+          <p class="eyebrow">the last page</p>
+          <h2 id="ending-title">The Light You Carry</h2>
+          <p id="ending-text"></p>
+          <p id="ending-statline" class="ending-statline"></p>
+          <div class="ending-actions">
+            <button class="primary-button" data-action="new-game">Walk again</button>
+            <button class="ghost-button" data-action="title">Return to title</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>

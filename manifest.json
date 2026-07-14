@@ -1,0 +1,10 @@
+{
+  "name": "Lumenwake",
+  "short_name": "Lumenwake",
+  "description": "A small hand-drawn memory-fable browser RPG.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0c1225",
+  "theme_color": "#182442",
+  "icons": []
+}
