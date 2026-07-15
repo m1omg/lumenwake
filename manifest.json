@@ -6,5 +6,12 @@
   "display": "standalone",
   "background_color": "#0c1225",
   "theme_color": "#182442",
-  "icons": []
+  "icons": [
+    {
+      "src": "assets/mira-card.png",
+      "sizes": "640x640",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }

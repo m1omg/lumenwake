@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#182442" />
     <meta name="description" content="Lumenwake — an original hand-drawn micro-JRPG about memory, grief, and the lights we leave for each other." />
     <title>Lumenwake — a small memory-fable</title>
+    <link rel="manifest" href="manifest.json" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -55,17 +56,17 @@
           </div>
           <div class="header-actions">
             <button class="icon-button" data-action="journal" title="Open journal" aria-label="Open journal">☰</button>
-            <button class="icon-button" data-action="sound" id="sound-button" title="Toggle sound" aria-label="Toggle sound">♫</button>
+            <button class="icon-button" data-action="sound" id="sound-button" title="Toggle sound" aria-label="Toggle sound" aria-pressed="true">♫</button>
           </div>
         </header>
 
         <div class="play-area">
           <div id="scene-frame" class="scene-frame scene-attic">
-            <div id="scene-art" class="scene-art" aria-label="Current illustrated location"></div>
+            <div id="scene-art" class="scene-art" role="img" aria-label="Current illustrated location"></div>
             <div class="scene-grain" aria-hidden="true"></div>
             <div class="scene-vignette" aria-hidden="true"></div>
-            <div id="hotspots" class="hotspots" aria-label="Things to inspect"></div>
-            <div id="player" class="player" aria-label="Nilo"></div>
+            <div id="hotspots" class="hotspots" role="region" aria-label="Things to inspect"></div>
+            <div id="player" class="player" role="img" aria-label="Nilo"></div>
             <div id="nearest-hint" class="nearest-hint" hidden></div>
             <div id="scene-caption" class="scene-caption"></div>
           </div>
@@ -85,7 +86,7 @@
         </footer>
       </section>
 
-      <aside id="dialogue-modal" class="dialogue-modal modal" hidden aria-live="polite">
+      <aside id="dialogue-modal" class="dialogue-modal modal" hidden role="dialog" aria-modal="true" aria-labelledby="dialogue-speaker" aria-describedby="dialogue-text" aria-live="polite" tabindex="-1">
         <div class="dialogue-inner">
           <div id="dialogue-portrait" class="dialogue-portrait" aria-hidden="true"></div>
           <div class="dialogue-copy">
@@ -100,7 +101,7 @@
         </div>
       </aside>
 
-      <aside id="battle-modal" class="battle-modal modal" hidden aria-live="polite">
+      <aside id="battle-modal" class="battle-modal modal" hidden role="dialog" aria-modal="true" aria-labelledby="battle-title" aria-describedby="battle-narration" aria-live="polite" tabindex="-1">
         <div class="battle-panel">
           <div class="battle-topline">
             <div>
@@ -111,7 +112,7 @@
           </div>
           <div class="battle-arena">
             <div class="battle-weather" aria-hidden="true"></div>
-            <div id="enemy-art" class="enemy-art paper-gnawer" aria-label="Enemy illustration"></div>
+            <div id="enemy-art" class="enemy-art paper-gnawer" role="img" aria-label="Enemy illustration"></div>
             <div class="enemy-card">
               <div class="enemy-name-row">
                 <span id="enemy-mood" class="mood-chip">jittery</span>
@@ -132,31 +133,32 @@
               <button class="battle-command" data-battle-action="shine"><span class="command-icon">✦</span><span><b>Shine</b><small>deal focused harm</small></span><kbd>2</kbd></button>
               <button class="battle-command" data-battle-action="mend"><span class="command-icon">⌁</span><span><b>Mend</b><small>restore courage</small></span><kbd>3</kbd></button>
               <button class="battle-command" data-battle-action="name"><span class="command-icon">〰</span><span><b>Name it</b><small>make the feeling smaller</small></span><kbd>4</kbd></button>
+              <button class="battle-command" data-battle-action="plum"><span class="command-icon">●</span><span><b>Use plum</b><small id="plum-command-copy">restore 3 courage · none left</small></span><kbd>5</kbd></button>
             </div>
           </div>
         </div>
       </aside>
 
-      <aside id="journal-panel" class="journal-panel" hidden aria-label="Journal">
+      <aside id="journal-panel" class="journal-panel" hidden role="dialog" aria-modal="true" aria-labelledby="journal-title" tabindex="-1">
         <div class="journal-sheet">
           <div class="journal-header">
             <div>
               <p class="eyebrow">Nilo's pocket journal</p>
-              <h2>Things that stayed</h2>
+              <h2 id="journal-title">Things that stayed</h2>
             </div>
-            <button class="icon-button" data-action="journal-close" aria-label="Close journal">×</button>
+            <button id="journal-close" class="icon-button" data-action="journal-close" aria-label="Close journal">×</button>
           </div>
           <div class="journal-tabs" role="tablist">
-            <button class="journal-tab active" data-journal-tab="notes">notes</button>
-            <button class="journal-tab" data-journal-tab="people">people</button>
-            <button class="journal-tab" data-journal-tab="controls">how to walk</button>
+            <button id="journal-tab-notes" class="journal-tab active" data-journal-tab="notes" role="tab" aria-selected="true" aria-controls="journal-content">notes</button>
+            <button id="journal-tab-people" class="journal-tab" data-journal-tab="people" role="tab" aria-selected="false" aria-controls="journal-content">people</button>
+            <button id="journal-tab-controls" class="journal-tab" data-journal-tab="controls" role="tab" aria-selected="false" aria-controls="journal-content">how to walk</button>
           </div>
-          <div id="journal-content" class="journal-content"></div>
+          <div id="journal-content" class="journal-content" role="tabpanel" aria-labelledby="journal-tab-notes"></div>
           <div class="journal-bottom"><button class="small-button" data-action="save-now">Save now</button><span id="save-status">autosaves after every important moment</span></div>
         </div>
       </aside>
 
-      <div id="ending-card" class="ending-card" hidden>
+      <div id="ending-card" class="ending-card" hidden role="dialog" aria-modal="true" aria-labelledby="ending-title" aria-describedby="ending-text" tabindex="-1">
         <div class="ending-art" aria-hidden="true"></div>
         <div class="ending-copy">
           <p class="eyebrow">the last page</p>

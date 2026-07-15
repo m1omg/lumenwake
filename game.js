@@ -2,6 +2,7 @@
   "use strict";
 
   const SAVE_KEY = "lumenwake-save-v1";
+  const SAVE_VERSION = 2;
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
 
@@ -40,7 +41,9 @@
     battleLog: $("#battle-log"),
     battleTurn: $("#battle-turn-label"),
     battleCommands: $("#battle-commands"),
+    plumCommandCopy: $("#plum-command-copy"),
     journal: $("#journal-panel"),
+    journalClose: $("#journal-close"),
     journalContent: $("#journal-content"),
     saveStatus: $("#save-status"),
     ending: $("#ending-card"),
@@ -169,7 +172,7 @@
   };
 
   const freshState = () => ({
-    version: 1,
+    version: SAVE_VERSION,
     scene: "attic",
     player: { x: 55, y: 70 },
     courage: 16,
@@ -200,8 +203,10 @@
   let musicTimer = null;
   let musicStep = 0;
   const WALK_SPEED = 13;
+  const APPROACH_SPEED = 42;
   const movementKeys = new Set();
   let movementFrame = null;
+  let approachTarget = null;
   let lastMovementTime = 0;
   let lastStepTime = 0;
 
@@ -209,12 +214,77 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function isRecord(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function finiteNumber(value, fallback, min, max) {
+    return typeof value === "number" && Number.isFinite(value) ? clamp(value, min, max) : fallback;
+  }
+
+  function sanitizeFlags(value) {
+    if (!isRecord(value)) return {};
+    return Object.fromEntries(Object.entries(value)
+      .filter(([key, flag]) => key.length <= 80 && (typeof flag === "boolean" || typeof flag === "string" || typeof flag === "number" && Number.isFinite(flag)))
+      .slice(0, 120));
+  }
+
+  function sanitizeJournal(value) {
+    if (!Array.isArray(value)) return [];
+    return value.filter(isRecord).map((entry) => ({
+      id: typeof entry.id === "string" ? entry.id.slice(0, 80) : "",
+      title: typeof entry.title === "string" ? entry.title.slice(0, 180) : "",
+      text: typeof entry.text === "string" ? entry.text.slice(0, 1600) : ""
+    })).filter((entry) => entry.id && entry.title).slice(0, 100);
+  }
+
+  function sanitizeState(parsed) {
+    if (!isRecord(parsed) || ![1, SAVE_VERSION].includes(parsed.version)) return null;
+    const base = freshState();
+    const flags = sanitizeFlags(parsed.flags);
+    const ending = typeof parsed.ending === "string" && endings[parsed.ending] ? parsed.ending : null;
+    if (parsed.version === 1 && ending && !Object.prototype.hasOwnProperty.call(flags, "endingSeen")) flags.endingSeen = true;
+    if (typeof flags.endingSeen !== "boolean" || !ending) delete flags.endingSeen;
+    const player = isRecord(parsed.player) ? parsed.player : {};
+    const savedScene = typeof parsed.scene === "string" && sceneInfo[parsed.scene] ? parsed.scene : "attic";
+    return {
+      ...base,
+      version: SAVE_VERSION,
+      scene: savedScene === "dawn" && !ending ? "attic" : savedScene,
+      player: {
+        x: finiteNumber(player.x, base.player.x, 4, 96),
+        y: finiteNumber(player.y, base.player.y, 8, 88)
+      },
+      courage: finiteNumber(parsed.courage, base.courage, 0, base.maxCourage),
+      warmth: finiteNumber(parsed.warmth, 0, 0, 6),
+      truth: finiteNumber(parsed.truth, 0, 0, 8),
+      sparks: finiteNumber(parsed.sparks, 0, 0, 3),
+      tideMemories: finiteNumber(parsed.tideMemories, 0, 0, 3),
+      battleWins: finiteNumber(parsed.battleWins, 0, 0, 99),
+      sound: typeof parsed.sound === "boolean" ? parsed.sound : base.sound,
+      flags,
+      inventory: Array.isArray(parsed.inventory) ? parsed.inventory.filter((item) => typeof item === "string" && item.length <= 80).slice(0, 20) : [],
+      journal: sanitizeJournal(parsed.journal),
+      ending,
+      startedAt: finiteNumber(parsed.startedAt, base.startedAt, 0, Number.MAX_SAFE_INTEGER)
+    };
+  }
+
+  function readSavedState() {
+    try {
+      return sanitizeState(JSON.parse(localStorage.getItem(SAVE_KEY) || "null"));
+    } catch (_) {
+      return null;
+    }
+  }
+
   function hasSave() {
-    try { return Boolean(localStorage.getItem(SAVE_KEY)); } catch (_) { return false; }
+    return Boolean(readSavedState());
   }
 
   function saveState(silent = true) {
     try {
+      state.version = SAVE_VERSION;
       localStorage.setItem(SAVE_KEY, JSON.stringify(state));
       if (!silent) {
         refs.saveStatus.textContent = "saved just now";
@@ -226,19 +296,13 @@
   }
 
   function loadState() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
-      if (!parsed || parsed.version !== 1) return false;
-      state = Object.assign(freshState(), parsed, {
-        player: Object.assign({ x: 55, y: 70 }, parsed.player || {}),
-        flags: Object.assign({}, parsed.flags || {}),
-        inventory: Array.isArray(parsed.inventory) ? parsed.inventory : [],
-        journal: Array.isArray(parsed.journal) ? parsed.journal : []
-      });
-      return true;
-    } catch (_) {
+    const saved = readSavedState();
+    if (!saved) {
+      try { localStorage.removeItem(SAVE_KEY); } catch (_) { /* no persistent storage available */ }
       return false;
     }
+    state = saved;
+    return true;
   }
 
   function updateContinueButton() {
@@ -246,6 +310,12 @@
     refs.continueButton.disabled = !enabled;
     refs.continueButton.style.opacity = enabled ? "1" : ".46";
     refs.continueButton.title = enabled ? "Continue your saved walk" : "No saved walk yet";
+  }
+
+  function syncSoundButton() {
+    refs.soundButton.textContent = state.sound ? "♫" : "·";
+    refs.soundButton.title = state.sound ? "Mute sound" : "Turn sound on";
+    refs.soundButton.setAttribute("aria-pressed", `${state.sound}`);
   }
 
   function showToast(message) {
@@ -260,8 +330,20 @@
     state.journal.push({ id, title, text });
   }
 
-  function addItem(item) {
-    if (!state.inventory.includes(item)) state.inventory.push(item);
+  function addItem(item, quantity = 1, stack = false) {
+    if (!stack && state.inventory.includes(item)) return;
+    for (let index = 0; index < quantity; index += 1) state.inventory.push(item);
+  }
+
+  function itemCount(item) {
+    return state.inventory.filter((entry) => entry === item).length;
+  }
+
+  function useItem(item) {
+    const index = state.inventory.indexOf(item);
+    if (index < 0) return false;
+    state.inventory.splice(index, 1);
+    return true;
   }
 
   function setFlag(key, value = true) {
@@ -290,7 +372,7 @@
   }
 
   function getGoal() {
-    if (state.ending) return "The page has turned."
+    if (state.flags.endingSeen) return "The page has turned.";
     if (state.scene === "attic") {
       if (!state.flags.note) return "Look around the attic. The lamp is already lit.";
       if (!state.flags.pips) return "Find out who is hiding in the lantern light.";
@@ -304,6 +386,7 @@
       if (state.tideMemories < 3) return `Set the paper memories afloat. (${state.tideMemories} / 3)`;
       return "Follow the red thread to the root arch.";
     }
+    if (state.scene === "dawn") return "Take one last look, then follow the path home.";
     return "Take one last look.";
   }
 
@@ -332,8 +415,12 @@
   }
 
   function hotspotDone(id) {
-    return Boolean(state.flags[id] || state.flags[`${id}Done`] ||
-      ["boat-left", "boat-center"].includes(id) && state.flags[id]);
+    return Boolean(state.flags[id] || state.flags[`${id}Done`] || (id === "dawn-tree" && state.flags.dawnTree));
+  }
+
+  function visibleHotspots() {
+    const info = sceneInfo[state.scene] || sceneInfo.attic;
+    return info.hotspots.filter((hotspot) => refs.hotspots.querySelector(`[data-hotspot="${hotspot.id}"]`));
   }
 
   function updatePlayer() {
@@ -341,15 +428,11 @@
     state.player.y = clamp(state.player.y, 8, 88);
     refs.player.style.left = `${state.player.x}%`;
     refs.player.style.top = `${state.player.y}%`;
-    const visible = sceneInfo[state.scene].hotspots.filter((h) => {
-      const node = refs.hotspots.querySelector(`[data-hotspot="${h.id}"]`);
-      return node && !node.disabled;
-    });
-    const nearest = visible
+    const nearest = visibleHotspots()
       .map((h) => ({ h, distance: Math.hypot(h.x - state.player.x, h.y - state.player.y) }))
       .sort((a, b) => a.distance - b.distance)[0];
     $$(".hotspot.near").forEach((node) => node.classList.remove("near"));
-    if (nearest && nearest.distance < 17 && !dialogueOpen() && !battle) {
+    if (nearest && nearest.distance < 17 && !dialogueOpen() && !battle && !state.flags.endingSeen) {
       const node = refs.hotspots.querySelector(`[data-hotspot="${nearest.h.id}"]`);
       if (node) node.classList.add("near");
       refs.nearestHint.hidden = false;
@@ -362,12 +445,10 @@
   }
 
   function approachHotspot(hotspot) {
+    if (dialogueOpen() || battle || !refs.journal.hidden || state.flags.endingSeen) return;
     clearMovement();
-    state.player.x = hotspot.x;
-    state.player.y = clamp(hotspot.y + 8, 8, 88);
-    updatePlayer();
-    playSfx("step");
-    window.setTimeout(() => interact(hotspot.id), 220);
+    approachTarget = { hotspot, x: hotspot.x, y: clamp(hotspot.y + 8, 8, 88) };
+    requestMovementFrame();
   }
 
   function enterScene(scene, position, lines = null, done = null) {
@@ -380,7 +461,7 @@
   }
 
   function interact(id) {
-    if (dialogueOpen() || battle || state.ending) return;
+    if (dialogueOpen() || battle || state.flags.endingSeen) return;
     if (state.scene === "attic") atticInteract(id);
     if (state.scene === "orchard") orchardInteract(id);
     if (state.scene === "tide") tideInteract(id);
@@ -455,6 +536,7 @@
       if (!state.flags.chest && state.flags.note) {
         setFlag("chest");
         addItem("red thread spool");
+        addItem("sugar plum", 3, true);
         addJournal("thread", "The red thread", "It is tied around a brass key and smells faintly of oranges. It points out the window.");
         runDialogue([
           { speaker: "Nilo", portrait: "nilo", text: "The chest opens with the key hidden in Mira's paper moon." },
@@ -545,7 +627,7 @@
     }
     if (id === "basket" && !state.flags.basket) {
       setFlag("basket");
-      addItem("sugar plum");
+      addItem("sugar plum", 1, true);
       addJournal("basket", "A sugar plum", "Mira used to hide sugar plums in every room. This one is still sweet enough to restore 3 courage in an encounter.");
       runDialogue([
         { speaker: "Nilo", portrait: "nilo", text: "The basket is full of fruit with tiny paper labels: brave, almost, later." },
@@ -691,13 +773,50 @@
         { speaker: "Pips", portrait: "pips", text: "That is a very inconvenient pocket." },
         { speaker: "Nilo", portrait: "nilo", text: "I can live with inconvenient. I am less interested in pretending." }
       ], () => { renderScene(); saveState(); });
-    } else {
-      runDialogue([{ speaker: "Pips", portrait: "pips", text: "The morning is not a reward. It is just morning. That is enough." }]);
+      return;
     }
+    if (id === "dawn-gate") {
+      runDialogue([
+        { speaker: "Nilo", portrait: "nilo", text: "The path home is still here. It did not ask me to be finished before I used it." },
+        { speaker: "Pips", portrait: "pips", text: "Nothing worth carrying asks that. Go on. The page knows how to turn." }
+      ], () => presentEnding());
+      return;
+    }
+    runDialogue([{ speaker: "Pips", portrait: "pips", text: "The morning is not a reward. It is just morning. That is enough." }]);
   }
 
   function dialogueOpen() {
     return !refs.dialogue.hidden;
+  }
+
+  function focusSoon(element) {
+    if (!element) return;
+    window.requestAnimationFrame(() => {
+      try { element.focus({ preventScroll: true }); }
+      catch (_) { element.focus(); }
+    });
+  }
+
+  function activeModal() {
+    return [refs.ending, refs.journal, refs.battle, refs.dialogue].find((element) => !element.hidden) || null;
+  }
+
+  function trapModalFocus(event) {
+    if (event.key !== "Tab") return false;
+    const modal = activeModal();
+    if (!modal) return false;
+    const focusable = [...modal.querySelectorAll("button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])")]
+      .filter((element) => element.getClientRects().length);
+    if (!focusable.length) { event.preventDefault(); return true; }
+    const current = document.activeElement;
+    const index = focusable.indexOf(current);
+    const next = event.shiftKey ? (index <= 0 ? focusable.length - 1 : index - 1) : (index === focusable.length - 1 ? 0 : index + 1);
+    if (index < 0 || next !== index + (event.shiftKey ? -1 : 1)) {
+      event.preventDefault();
+      focusable[next < 0 ? focusable.length - 1 : next].focus();
+      return true;
+    }
+    return false;
   }
 
   function runDialogue(entries, done = null) {
@@ -712,12 +831,9 @@
 
   function renderDialogueEntry() {
     if (dialogueIndex >= dialogueQueue.length) {
+      const done = dialogueDone;
       closeDialogue();
-      if (dialogueDone) {
-        const done = dialogueDone;
-        dialogueDone = null;
-        done();
-      }
+      if (done) done();
       return;
     }
     dialogueCurrent = dialogueQueue[dialogueIndex];
@@ -738,8 +854,10 @@
         button.addEventListener("click", () => chooseDialogue(index));
         refs.dialogueChoices.appendChild(button);
       });
+      focusSoon(refs.dialogueChoices.querySelector("button"));
     } else {
       refs.dialogueNext.hidden = false;
+      focusSoon(refs.dialogueNext);
     }
   }
 
@@ -761,6 +879,7 @@
     const choice = dialogueCurrent.choices[index];
     if (!choice) return;
     if (choice.effect) choice.effect();
+    saveState();
     if (choice.after && choice.after.length) dialogueQueue.splice(dialogueIndex + 1, 0, ...choice.after);
     dialogueIndex += 1;
     renderDialogueEntry();
@@ -771,6 +890,7 @@
     refs.dialogue.hidden = true;
     dialogueQueue = [];
     dialogueCurrent = null;
+    dialogueDone = null;
     refs.dialogueChoices.innerHTML = "";
   }
 
@@ -792,6 +912,7 @@
     refs.battle.hidden = false;
     refs.battleClose.hidden = Boolean(template.final);
     renderBattle();
+    focusSoon(refs.battleCommands.querySelector("button:not(:disabled)"));
     initAudio();
     playSfx("encounter");
   }
@@ -802,6 +923,7 @@
     refs.battleKicker.textContent = e.kicker;
     refs.battleTitle.textContent = e.title;
     refs.enemyArt.className = `enemy-art ${e.art}`;
+    refs.enemyArt.setAttribute("aria-label", `${e.title} illustration`);
     refs.enemyMood.textContent = battle.guard > 0 ? e.mood : "heard";
     refs.enemyMood.style.background = battle.guard > 0 ? "var(--teal)" : "var(--gold)";
     refs.enemyHpText.textContent = `${Math.max(0, battle.hp)} / ${e.maxHp}`;
@@ -809,9 +931,12 @@
     refs.battleNarration.textContent = battle.turn === "enemy" ? e.attackText : e.narration;
     refs.battleLog.textContent = battle.logs.slice(-2).join("  ·  ");
     refs.battleTurn.textContent = battle.turn === "player" ? "your turn" : "the feeling moves";
+    const plums = itemCount("sugar plum");
+    refs.plumCommandCopy.textContent = `restore 3 courage · ${plums ? `${plums} left` : "none left"}`;
     $$("[data-battle-action]").forEach((button) => {
       button.disabled = battle.turn !== "player" || battle.busy;
       if (button.dataset.battleAction === "mend" && battle.mended) button.disabled = true;
+      if (button.dataset.battleAction === "plum" && !plums) button.disabled = true;
     });
   }
 
@@ -822,7 +947,9 @@
   }
 
   function battleAction(action) {
-    if (!battle || battle.turn !== "player" || battle.busy) return;
+    if (!battle || battle.turn !== "player" || battle.busy || !["listen", "shine", "mend", "name", "plum"].includes(action)) return;
+    if (action === "mend" && battle.mended) return;
+    if (action === "plum" && !itemCount("sugar plum")) return;
     battle.busy = true;
     const e = battle.enemy;
     let damage = 0;
@@ -832,25 +959,33 @@
       battle.guard = Math.max(0, battle.guard - 1);
       damage = before === 0 ? 2 : 1;
       changeStat("truth", e.final ? 1 : 0, 0, 8);
-      message = battle.guard === 0 ? "You listen until the sharp edge of it has a name." : "You listen. The feeling stops shouting for a moment.";
+      message = e.listenText || (battle.guard === 0 ? "You listen until the sharp edge of it has a name." : "You listen. The feeling stops shouting for a moment.");
       playSfx("listen");
     } else if (action === "shine") {
-      damage = battle.guard === 0 ? (e.final ? 6 : 5) : 4;
+      damage = battle.guard === 0 ? (e.final ? 7 : 6) : 3;
       message = "You raise the lantern. It does not erase the dark; it gives it edges.";
       playSfx("hit");
     } else if (action === "mend") {
-      const heal = battle.mended ? 1 : 4;
+      const heal = 4;
       battle.mended = true;
       state.courage = clamp(state.courage + heal, 0, state.maxCourage);
       changeStat("warmth", 1, 0, 6);
       message = `You mend the little paper lantern. Courage +${heal}.`;
       playSfx("heal");
     } else if (action === "name") {
-      damage = e.final ? 5 : 3;
+      const before = battle.guard;
       battle.guard = Math.max(0, battle.guard - 2);
+      damage = before === 0 ? (e.final ? 6 : 5) : 2;
       changeStat("truth", 1, 0, 8);
       message = `You say: “${e.title.replace("The ", "").toLowerCase()}.” The name makes room around it.`;
       playSfx("name");
+    } else if (action === "plum") {
+      useItem("sugar plum");
+      const heal = 3;
+      state.courage = clamp(state.courage + heal, 0, state.maxCourage);
+      message = `The sugar plum tastes like later. Courage +${heal}.`;
+      saveState();
+      playSfx("heal");
     }
     if (damage > 0) battle.hp -= damage;
     pushBattleLog(`${message}${damage ? ` · ${damage} light` : ""}`);
@@ -868,8 +1003,7 @@
     const e = battle.enemy;
     battle.turn = "enemy";
     renderBattle();
-    const reduction = battle.guard > 0 ? 1 : 0;
-    const damage = Math.max(1, e.damage - reduction);
+    const damage = Math.max(1, e.damage);
     state.courage -= damage;
     if (state.courage <= 0) {
       state.courage = Math.min(state.maxCourage, 5);
@@ -923,25 +1057,48 @@
   function showEnding() {
     clearMovement();
     state.ending = state.truth >= 5 && state.warmth >= 3 ? "bright" : state.truth >= 3 ? "gentle" : "unfinished";
+    state.scene = "dawn";
+    state.player = { x: 28, y: 78 };
+    setFlag("finalResolved");
+    refs.ending.hidden = true;
+    renderScene();
+    saveState();
+    updateContinueButton();
+    runDialogue([
+      { speaker: "Narrator", portrait: "narrator", text: "Morning finds the orchard exactly where the night left it, only quieter around the edges." },
+      { speaker: "Pips", portrait: "pips", text: "The tree is still here. So is the path home. Take one last look when you are ready." }
+    ], () => { renderScene(); saveState(); });
+  }
+
+  function presentEnding() {
+    if (!state.ending || !endings[state.ending]) return;
+    clearMovement();
     const ending = endings[state.ending];
     refs.endingTitle.textContent = ending.title;
     refs.endingText.textContent = ending.text;
     refs.endingStatline.textContent = `${ending.statline} · ${state.battleWins} encounters faced`;
+    state.flags.endingSeen = true;
     refs.ending.hidden = false;
-    state.scene = "dawn";
     saveState();
     updateContinueButton();
+    focusSoon(refs.ending.querySelector("button"));
   }
 
   function startNewGame() {
+    clearMovement();
+    closeDialogue();
+    battle = null;
+    refs.battle.hidden = true;
     state = freshState();
     refs.ending.hidden = true;
     refs.journal.hidden = true;
     refs.title.hidden = true;
     refs.play.hidden = false;
+    syncSoundButton();
     initAudio();
     renderScene();
     saveState();
+    updateContinueButton();
     runDialogue([
       { speaker: "Narrator", portrait: "narrator", text: "A little before midnight, Nilo wakes to find the attic lamp lit and the moon missing from the sky." },
       { speaker: "Nilo", portrait: "nilo", text: "I did not leave that on." },
@@ -964,14 +1121,16 @@
   }
 
   function continueGame() {
-    if (!loadState()) { showToast("There is no saved walk yet."); return; }
+    if (!loadState()) { updateContinueButton(); showToast("That saved page could not be read. Start a new walk."); return; }
     refs.title.hidden = true;
     refs.play.hidden = false;
     refs.ending.hidden = true;
     refs.journal.hidden = true;
+    syncSoundButton();
     initAudio();
     renderScene();
-    if (state.ending) showEnding();
+    if (state.flags.endingSeen) presentEnding();
+    else if (state.ending && state.scene === "dawn") showToast("The morning is still waiting in the orchard.");
     else showToast("The thread remembers where you stopped.");
   }
 
@@ -979,23 +1138,34 @@
     clearMovement();
     refs.ending.hidden = true;
     refs.journal.hidden = true;
-    refs.dialogue.hidden = true;
+    closeDialogue();
+    battle = null;
     refs.battle.hidden = true;
     refs.play.hidden = true;
     refs.title.hidden = false;
     updateContinueButton();
+    focusSoon($("[data-action='new-game']"));
   }
 
   function openJournal() {
     clearMovement();
     refs.journal.hidden = false;
     renderJournal();
+    focusSoon(refs.journalClose);
   }
 
-  function closeJournal() { refs.journal.hidden = true; }
+  function closeJournal() {
+    refs.journal.hidden = true;
+    focusSoon($("[data-action='journal']"));
+  }
 
   function renderJournal() {
-    $$(".journal-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.journalTab === journalTab));
+    $$(".journal-tab").forEach((tab) => {
+      const active = tab.dataset.journalTab === journalTab;
+      tab.classList.toggle("active", active);
+      tab.setAttribute("aria-selected", `${active}`);
+      if (active) refs.journalContent.setAttribute("aria-labelledby", tab.id);
+    });
     if (journalTab === "notes") {
       if (!state.journal.length) {
         refs.journalContent.innerHTML = `<div class="journal-entry empty">The page is blank. Blank is not empty. It is patient.</div>`;
@@ -1008,9 +1178,11 @@
         <article class="journal-entry"><h3>Pips</h3><p>A moth-adjacent lantern keeper. Takes every promise literally and every feeling personally.</p></article>
         <article class="journal-entry"><h3>Mira</h3><p>Nilo's older sister. She left behind a red thread and a note that refuses to become an answer.</p></article>`;
     } else {
+      const plums = itemCount("sugar plum");
       refs.journalContent.innerHTML = `
         <article class="journal-entry"><h3>Walking</h3><p>Use WASD or the arrow keys to move Nilo. Click a glowing marker to walk there and inspect it. When a marker is close, press E.</p></article>
-        <article class="journal-entry"><h3>Encounters</h3><p>Listen lowers an enemy's guard. Shine deals light. Mend restores courage once per encounter. Name it makes a feeling smaller. Keys 1–4 work in battle.</p></article>
+        <article class="journal-entry"><h3>Encounters</h3><p>Listen lowers an enemy's guard and reveals a weak point. Shine is strongest against an unguarded feeling. Mend restores courage once per encounter. Name it makes a feeling smaller. Keys 1–5 work in battle.</p></article>
+        <article class="journal-entry"><h3>Pocket</h3><p>${plums ? `${plums} sugar plum${plums === 1 ? "" : "s"} remain. Use one with key 5 in an encounter to restore 3 courage.` : "No sugar plums remain. The pocket still smells faintly of oranges."}</p></article>
         <article class="journal-entry"><h3>Keeping the page</h3><p>The game autosaves after important moments. Your choices change the final page, but there is no wrong kind of remembering.</p></article>`;
     }
   }
@@ -1020,7 +1192,10 @@
   }
 
   function initAudio() {
-    if (!state.sound) return;
+    if (!state.sound) {
+      if (masterGain) masterGain.gain.value = 0;
+      return;
+    }
     if (!audioContext) {
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtor) return;
@@ -1029,6 +1204,7 @@
       masterGain.gain.value = 0.055;
       masterGain.connect(audioContext.destination);
     }
+    if (masterGain) masterGain.gain.value = 0.055;
     if (audioContext.state === "suspended") audioContext.resume();
     if (!musicTimer) {
       musicTimer = window.setInterval(playMusicStep, 2400);
@@ -1086,8 +1262,7 @@
 
   function toggleSound() {
     state.sound = !state.sound;
-    refs.soundButton.textContent = state.sound ? "♫" : "·";
-    refs.soundButton.title = state.sound ? "Mute sound" : "Turn sound on";
+    syncSoundButton();
     if (state.sound) initAudio();
     else if (masterGain) masterGain.gain.value = 0;
     if (state.sound && masterGain) masterGain.gain.value = .055;
@@ -1103,7 +1278,9 @@
 
   function clearMovement() {
     movementKeys.clear();
+    approachTarget = null;
     lastMovementTime = 0;
+    lastStepTime = 0;
     if (movementFrame !== null) {
       cancelAnimationFrame(movementFrame);
       movementFrame = null;
@@ -1118,26 +1295,47 @@
 
   function stepMovement(now) {
     movementFrame = null;
-    if (!movementKeys.size || dialogueOpen() || battle || !refs.journal.hidden || state.ending) {
+    if ((!movementKeys.size && !approachTarget) || dialogueOpen() || battle || !refs.journal.hidden || state.flags.endingSeen) {
       lastMovementTime = 0;
       return;
     }
     const elapsed = clamp((now - lastMovementTime) / 1000, 0, .05);
     lastMovementTime = now;
-    const direction = movementVector();
+    let direction = movementVector();
+    if (approachTarget && !movementKeys.size) {
+      const horizontal = approachTarget.x - state.player.x;
+      const vertical = approachTarget.y - state.player.y;
+      const distance = Math.hypot(horizontal, vertical);
+      const distanceThisFrame = APPROACH_SPEED * elapsed;
+      if (distance <= Math.max(distanceThisFrame, .1)) {
+        const hotspot = approachTarget.hotspot;
+        state.player.x = approachTarget.x;
+        state.player.y = approachTarget.y;
+        approachTarget = null;
+        updatePlayer();
+        playSfx("step");
+        interact(hotspot.id);
+        return;
+      }
+      direction = { x: horizontal / distance, y: vertical / distance };
+    }
     state.player.x = clamp(state.player.x + direction.x * WALK_SPEED * elapsed, 4, 96);
     state.player.y = clamp(state.player.y + direction.y * WALK_SPEED * elapsed, 8, 88);
+    if (approachTarget && !movementKeys.size) {
+      state.player.x = clamp(state.player.x + direction.x * (APPROACH_SPEED - WALK_SPEED) * elapsed, 4, 96);
+      state.player.y = clamp(state.player.y + direction.y * (APPROACH_SPEED - WALK_SPEED) * elapsed, 8, 88);
+    }
     updatePlayer();
     if (now - lastStepTime > 320) {
       playSfx("step");
       lastStepTime = now;
     }
-    movementFrame = requestAnimationFrame(stepMovement);
+    if (movementKeys.size || approachTarget) movementFrame = requestAnimationFrame(stepMovement);
   }
 
   function inspectNearest() {
-    if (dialogueOpen() || battle || state.ending) return;
-    const nearest = sceneInfo[state.scene].hotspots
+    if (dialogueOpen() || battle || state.flags.endingSeen) return;
+    const nearest = visibleHotspots()
       .map((h) => ({ h, distance: Math.hypot(h.x - state.player.x, h.y - state.player.y) }))
       .sort((a, b) => a.distance - b.distance)[0];
     if (nearest && nearest.distance < 18) interact(nearest.h.id);
@@ -1146,23 +1344,38 @@
 
   function handleKeydown(event) {
     const key = event.key.toLowerCase();
+    if (trapModalFocus(event)) return;
     if (key === "escape") {
       if (!refs.journal.hidden) { closeJournal(); return; }
-      if (dialogueOpen()) { closeDialogue(); return; }
+      if (dialogueOpen()) { event.preventDefault(); showToast("Finish this conversation to keep the thread."); return; }
       if (battle && !battle.enemy.final) { fleeBattle(); return; }
     }
     if (dialogueOpen()) {
-      if (dialogueCurrent && dialogueCurrent.choices && /^[1-4]$/.test(event.key)) chooseDialogue(Number(event.key) - 1);
-      else if (key === "enter" || key === " ") advanceDialogue();
+      if (dialogueCurrent && dialogueCurrent.choices && /^[1-4]$/.test(event.key)) { event.preventDefault(); chooseDialogue(Number(event.key) - 1); }
+      else if (key === "enter" || key === " ") { event.preventDefault(); advanceDialogue(); }
       return;
     }
     if (battle) {
-      if (/^[1-4]$/.test(event.key)) battleAction(["listen", "shine", "mend", "name"][Number(event.key) - 1]);
+      if (/^[1-5]$/.test(event.key)) { event.preventDefault(); battleAction(["listen", "shine", "mend", "name", "plum"][Number(event.key) - 1]); }
       return;
     }
-    if (!refs.journal.hidden) return;
+    if (!refs.journal.hidden) {
+      const focusedTab = document.activeElement.closest && document.activeElement.closest(".journal-tab");
+      if (focusedTab && ["arrowleft", "arrowright", "home", "end"].includes(key)) {
+        event.preventDefault();
+        const tabs = $$(".journal-tab");
+        const currentIndex = tabs.indexOf(focusedTab);
+        const nextIndex = key === "home" ? 0 : key === "end" ? tabs.length - 1 : (currentIndex + (key === "arrowright" ? 1 : -1) + tabs.length) % tabs.length;
+        const nextTab = tabs[nextIndex];
+        journalTab = nextTab.dataset.journalTab;
+        renderJournal();
+        nextTab.focus();
+      }
+      return;
+    }
     if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
       event.preventDefault();
+      approachTarget = null;
       movementKeys.add(key);
       requestMovementFrame();
       return;
@@ -1203,8 +1416,6 @@
   window.addEventListener("blur", clearMovement);
   window.addEventListener("beforeunload", () => saveState());
 
-  state.sound = true;
   updateContinueButton();
-  refs.soundButton.textContent = "♫";
-  refs.soundButton.title = "Mute sound";
+  syncSoundButton();
 })();

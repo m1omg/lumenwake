@@ -424,7 +424,7 @@ kbd { display: inline-block; min-width: 1.3em; margin-right: .18rem; padding: .1
 }
 
 .dialogue-portrait.pips { background-position: right center; }
-.dialogue-portrait.mira { background-position: left center; filter: sepia(.2) saturate(.8); }
+.dialogue-portrait.mira { background-image: url("assets/mira-card.png"); background-position: center; background-size: cover; filter: none; }
 .dialogue-portrait.narrator { background-image: radial-gradient(circle at 50% 44%, rgba(255,231,165,.3), transparent 18%), linear-gradient(145deg, #26385c, #161b36); }
 
 .dialogue-copy { position: relative; padding: 1.25rem 3.25rem 1rem 1.35rem; }
@@ -449,14 +449,10 @@ kbd { display: inline-block; min-width: 1.3em; margin-right: .18rem; padding: .1
 .battle-arena { position: relative; display: grid; grid-template-columns: 1fr minmax(230px, 320px); align-items: center; gap: 1.5rem; min-height: 240px; margin: 1rem 0; overflow: hidden; border: 1px solid rgba(255,248,233,.12); border-radius: 11px; background: radial-gradient(circle at 38% 45%, rgba(91,126,163,.34), transparent 24%), linear-gradient(130deg, #1d3152, #2d2340 65%, #191a35); }
 .battle-weather { position: absolute; inset: 0; opacity: .33; background-image: radial-gradient(circle, rgba(255,231,165,.6) 0 1px, transparent 1.5px); background-size: 37px 29px; animation: float-specks 12s linear infinite; }
 @keyframes float-specks { from { transform: translateY(0); } to { transform: translateY(-28px); } }
-.enemy-art { position: relative; z-index: 1; justify-self: center; width: 150px; height: 150px; filter: drop-shadow(0 15px 15px rgba(0,0,0,.28)); }
-.enemy-art::before, .enemy-art::after { content: ""; position: absolute; }
-.paper-gnawer::before { inset: 18px 12px 15px; border: 3px solid #25243a; border-radius: 52% 47% 43% 50%; background: #e9d8bb; transform: rotate(-7deg); box-shadow: inset 20px 10px 0 rgba(198,157,124,.25), inset -15px -8px 0 rgba(125,93,107,.18); }
-.paper-gnawer::after { left: 45px; top: 66px; width: 60px; height: 20px; border: 3px solid #25243a; border-radius: 50%; background: #9f5c70; transform: rotate(8deg); box-shadow: 0 0 0 4px rgba(255,229,187,.4); }
-.bell-hush::before { left: 30px; top: 15px; width: 90px; height: 112px; border: 3px solid #25243a; border-radius: 48% 48% 42% 42%; background: linear-gradient(145deg, #65779d, #394568 60%, #292c4c); box-shadow: inset 13px 10px 0 rgba(167,203,207,.18); }
-.bell-hush::after { left: 49px; bottom: 0; width: 52px; height: 52px; border: 3px solid #25243a; border-radius: 50%; background: var(--gold); box-shadow: 0 0 20px rgba(255,218,132,.44); }
-.unsaid-void::before { left: 18px; top: 14px; width: 112px; height: 126px; border: 3px solid #111525; border-radius: 43% 57% 46% 54%; background: radial-gradient(circle at 48% 35%, #59668a 0 5px, transparent 7px), radial-gradient(circle at 64% 47%, #b66d7c 0 3px, transparent 5px), linear-gradient(150deg, #1c203b, #090d1d 72%); box-shadow: 0 0 33px rgba(111,138,197,.24); transform: rotate(4deg); }
-.unsaid-void::after { left: 63px; top: 90px; width: 22px; height: 30px; border-left: 3px solid #e5b979; border-bottom: 3px solid #e5b979; transform: rotate(-38deg); opacity: .85; }
+.enemy-art { position: relative; z-index: 1; justify-self: center; width: 180px; height: 190px; background: center / contain no-repeat; filter: drop-shadow(0 15px 15px rgba(0,0,0,.28)); }
+.paper-gnawer { background-image: url("assets/paper-gnawer.png"); }
+.bell-hush { background-image: url("assets/bell-hush.png"); }
+.unsaid-void { background-image: url("assets/unsaid.png"); }
 
 .enemy-card { position: relative; z-index: 1; padding: 1rem 1rem .85rem; margin-right: 1.2rem; border: 1px solid rgba(255,248,233,.14); border-radius: 9px; background: rgba(11,15,32,.56); }
 .enemy-name-row { display: flex; align-items: center; justify-content: space-between; gap: .65rem; color: rgba(255,250,238,.76); font-size: .75rem; }
@@ -468,7 +464,7 @@ kbd { display: inline-block; min-width: 1.3em; margin-right: .18rem; padding: .1
 .battle-command-area { margin-top: 1rem; }
 .battle-command-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: .55rem; }
 .turn-label { color: var(--gold-bright); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
-.battle-commands { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .58rem; }
+.battle-commands { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .58rem; }
 .battle-command { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .45rem; min-height: 68px; padding: .58rem; border: 1px solid rgba(255,248,233,.18); border-radius: 8px; color: rgba(255,250,238,.9); background: rgba(255,248,233,.055); cursor: pointer; text-align: left; transition: transform .15s ease, background .15s ease, border-color .15s ease; }
 .battle-command:hover:not(:disabled) { border-color: rgba(255,231,165,.65); background: rgba(255,231,165,.12); transform: translateY(-2px); }
 .battle-command:disabled { cursor: not-allowed; opacity: .38; }
@@ -537,7 +533,7 @@ kbd { display: inline-block; min-width: 1.3em; margin-right: .18rem; padding: .1
   .battle-modal { padding: .45rem; }
   .battle-panel { padding: .8rem; }
   .battle-arena { grid-template-columns: 1fr; gap: .5rem; min-height: 335px; padding-top: .4rem; }
-  .enemy-art { width: 125px; height: 125px; }
+  .enemy-art { width: 145px; height: 170px; }
   .enemy-card { width: calc(100% - 1.2rem); margin: 0 .6rem .7rem; }
   .battle-commands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .battle-command { min-height: 60px; }
@@ -555,4 +551,13 @@ kbd { display: inline-block; min-width: 1.3em; margin-right: .18rem; padding: .1
   .dialogue-inner { min-height: 144px; }
   .dialogue-portrait { min-height: 144px; }
   .dialogue-text { min-height: 42px; margin: .35rem 0 .5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }
