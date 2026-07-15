@@ -463,6 +463,10 @@ kbd { display: inline-block; min-width: 1.3em; margin-right: .18rem; padding: .1
 .battle-log { display: flex; min-height: 45px; max-height: 72px; align-items: center; justify-content: center; padding: .45rem .8rem; overflow: auto; border-top: 1px solid rgba(255,248,233,.1); border-bottom: 1px solid rgba(255,248,233,.1); color: rgba(255,250,238,.63); font-size: .77rem; text-align: center; }
 .battle-command-area { margin-top: 1rem; }
 .battle-command-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: .55rem; }
+.battle-status { display: flex; align-items: center; gap: .7rem; }
+.battle-courage { display: inline-flex; align-items: center; gap: .28rem; padding: .28rem .5rem; border: 1px solid rgba(255,231,165,.32); border-radius: 99px; color: rgba(255,250,238,.8); background: rgba(255,231,165,.08); font-size: .7rem; letter-spacing: .04em; }
+.battle-courage > span { color: var(--gold); }
+.battle-courage b { color: var(--gold-bright); font-size: .76rem; }
 .turn-label { color: var(--gold-bright); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
 .battle-commands { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .58rem; }
 .battle-command { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .45rem; min-height: 68px; padding: .58rem; border: 1px solid rgba(255,248,233,.18); border-radius: 8px; color: rgba(255,250,238,.9); background: rgba(255,248,233,.055); cursor: pointer; text-align: left; transition: transform .15s ease, background .15s ease, border-color .15s ease; }
@@ -537,6 +541,8 @@ kbd { display: inline-block; min-width: 1.3em; margin-right: .18rem; padding: .1
   .enemy-card { width: calc(100% - 1.2rem); margin: 0 .6rem .7rem; }
   .battle-commands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .battle-command { min-height: 60px; }
+  .battle-command-heading { align-items: flex-start; gap: .5rem; }
+  .battle-status { align-items: flex-end; flex-direction: column; gap: .3rem; }
   .journal-sheet { height: calc(100vh - .9rem); }
   .ending-card { grid-template-columns: 1fr; grid-template-rows: 35vh 1fr; }
   .ending-art { min-height: 35vh; }

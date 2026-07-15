@@ -39,6 +39,7 @@
     enemyHpBar: $("#enemy-hp-bar"),
     battleNarration: $("#battle-narration"),
     battleLog: $("#battle-log"),
+    battleCourage: $("#battle-courage-value"),
     battleTurn: $("#battle-turn-label"),
     battleCommands: $("#battle-commands"),
     plumCommandCopy: $("#plum-command-copy"),
@@ -930,6 +931,7 @@
     refs.enemyHpBar.style.width = `${clamp((battle.hp / e.maxHp) * 100, 0, 100)}%`;
     refs.battleNarration.textContent = battle.turn === "enemy" ? e.attackText : e.narration;
     refs.battleLog.textContent = battle.logs.slice(-2).join("  ·  ");
+    refs.battleCourage.textContent = `${state.courage} / ${state.maxCourage}`;
     refs.battleTurn.textContent = battle.turn === "player" ? "your turn" : "the feeling moves";
     const plums = itemCount("sugar plum");
     refs.plumCommandCopy.textContent = `restore 3 courage · ${plums ? `${plums} left` : "none left"}`;
@@ -1000,23 +1002,32 @@
 
   function enemyTurn() {
     if (!battle) return;
+    const activeBattle = battle;
     const e = battle.enemy;
     battle.turn = "enemy";
     renderBattle();
     const damage = Math.max(1, e.damage);
     state.courage -= damage;
     if (state.courage <= 0) {
-      state.courage = Math.min(state.maxCourage, 5);
-      pushBattleLog("The lantern flares before you fall. You get up with five courage left.");
-      showToast("The lantern kept you standing.");
+      state.courage = Math.min(state.maxCourage, 6);
+      pushBattleLog("The lantern goes dark for a moment. You wake outside the encounter with six courage.");
+      showToast(`${e.title} remains unresolved. You can return when you are ready.`);
       playSfx("revive");
+      syncHud();
+      renderBattle();
+      saveState();
+      window.setTimeout(() => {
+        if (battle === activeBattle) loseBattle(activeBattle);
+      }, 900);
+      return;
     } else {
       pushBattleLog(`${e.title} reaches you · ${damage} courage lost.`);
       playSfx("hurt");
     }
     syncHud();
+    renderBattle();
     window.setTimeout(() => {
-      if (!battle) return;
+      if (battle !== activeBattle) return;
       battle.turn = "player";
       battle.busy = false;
       renderBattle();
@@ -1030,11 +1041,12 @@
     finishedBattle.turn = "player";
     finishedBattle.busy = true;
     pushBattleLog(e.victoryText);
-    refs.battleNarration.textContent = e.victoryText;
-    renderBattle();
     state.battleWins += 1;
     state.courage = clamp(state.courage + (e.final ? 0 : 3), 0, state.maxCourage);
     playSfx("win");
+    syncHud();
+    renderBattle();
+    refs.battleNarration.textContent = e.victoryText;
     saveState();
     window.setTimeout(() => {
       refs.battle.hidden = true;
@@ -1052,6 +1064,15 @@
     showToast(`You stepped away from ${name}. It is still here if you need to try again.`);
     playSfx("step");
     renderScene();
+  }
+
+  function loseBattle(finishedBattle) {
+    if (!battle || battle !== finishedBattle) return;
+    battle = null;
+    refs.battle.hidden = true;
+    saveState();
+    renderScene();
+    focusSoon(refs.hotspots.querySelector(".near") || refs.hotspots.querySelector("button"));
   }
 
   function showEnding() {

@@ -24,6 +24,8 @@ Open <http://127.0.0.1:4173/>. Opening `index.html` directly is not recommended 
 
 The game autosaves important moments in `localStorage`. Sound is synthesized in the browser with the Web Audio API; no external audio files or services are required.
 
+During an encounter, current Courage is shown above the command buttons. Reaching zero ends the encounter, resets that foe for a later retry, and returns Nilo to the scene with 6 Courage; no story progress is awarded.
+
 ## Check the build
 
 ```bash

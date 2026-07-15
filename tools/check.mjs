@@ -49,13 +49,15 @@ for (const token of ["role=\"dialog\"", "aria-modal=\"true\"", "role=\"tablist\"
 if (!css.includes("prefers-reduced-motion")) fail("styles.css is missing a reduced-motion override");
 if (!Array.isArray(manifest.icons) || !manifest.icons.some((icon) => icon.src === "assets/mira-card.png")) fail("manifest.json is missing the Lumenwake icon");
 
-for (const token of ["startNewGame", "continueGame", "startBattle", "showEnding", "presentEnding", "sanitizeState", "approachTarget", "trapModalFocus", "localStorage", "AudioContext"]) {
+for (const token of ["startNewGame", "continueGame", "startBattle", "loseBattle", "showEnding", "presentEnding", "sanitizeState", "approachTarget", "trapModalFocus", "localStorage", "AudioContext"]) {
   if (!js.includes(token)) fail(`game.js missing ${token}`);
 }
 for (const token of [
   'if (action === "mend" && battle.mended) return;',
   'if (action === "plum" && !itemCount("sugar plum")) return;',
   'const damage = Math.max(1, e.damage);',
+  'refs.battleCourage.textContent = `${state.courage} / ${state.maxCourage}`;',
+  'if (battle === activeBattle) loseBattle(activeBattle);',
   'if (dialogueOpen()) { event.preventDefault(); showToast("Finish this conversation to keep the thread."); return; }'
 ]) {
   if (!js.includes(token)) fail(`game.js is missing regression guard: ${token}`);

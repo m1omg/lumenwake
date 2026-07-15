@@ -126,7 +126,10 @@
           <div class="battle-command-area">
             <div class="battle-command-heading">
               <p class="eyebrow">choose a feeling</p>
-              <span id="battle-turn-label" class="turn-label">your turn</span>
+              <div class="battle-status">
+                <span class="battle-courage" aria-live="polite"><span aria-hidden="true">✦</span> <b id="battle-courage-value">16 / 16</b> courage</span>
+                <span id="battle-turn-label" class="turn-label">your turn</span>
+              </div>
             </div>
             <div id="battle-commands" class="battle-commands">
               <button class="battle-command" data-battle-action="listen"><span class="command-icon">◌</span><span><b>Listen</b><small>lower its guard</small></span><kbd>1</kbd></button>
