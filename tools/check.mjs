@@ -58,6 +58,7 @@ for (const token of [
   'const damage = Math.max(1, e.damage);',
   'refs.battleCourage.textContent = `${state.courage} / ${state.maxCourage}`;',
   'if (battle === activeBattle) loseBattle(activeBattle);',
+  'const MASTER_VOLUME = .42;',
   'if (dialogueOpen()) { event.preventDefault(); showToast("Finish this conversation to keep the thread."); return; }'
 ]) {
   if (!js.includes(token)) fail(`game.js is missing regression guard: ${token}`);

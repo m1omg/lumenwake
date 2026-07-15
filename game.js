@@ -203,6 +203,7 @@
   let masterGain = null;
   let musicTimer = null;
   let musicStep = 0;
+  const MASTER_VOLUME = .42;
   const WALK_SPEED = 13;
   const APPROACH_SPEED = 42;
   const movementKeys = new Set();
@@ -1222,10 +1223,10 @@
       if (!AudioCtor) return;
       audioContext = new AudioCtor();
       masterGain = audioContext.createGain();
-      masterGain.gain.value = 0.055;
+      masterGain.gain.value = MASTER_VOLUME;
       masterGain.connect(audioContext.destination);
     }
-    if (masterGain) masterGain.gain.value = 0.055;
+    if (masterGain) masterGain.gain.value = MASTER_VOLUME;
     if (audioContext.state === "suspended") audioContext.resume();
     if (!musicTimer) {
       musicTimer = window.setInterval(playMusicStep, 2400);
@@ -1286,7 +1287,7 @@
     syncSoundButton();
     if (state.sound) initAudio();
     else if (masterGain) masterGain.gain.value = 0;
-    if (state.sound && masterGain) masterGain.gain.value = .055;
+    if (state.sound && masterGain) masterGain.gain.value = MASTER_VOLUME;
     saveState();
   }
 
